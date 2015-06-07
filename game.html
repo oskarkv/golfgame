@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Golf Game</title>
+<link rel="stylesheet" type="text/css" href="style.css">
+</head>
+<body>
+<pre>
+</pre>
+<canvas id="canvas" width="500" height="500"></canvas>
+<div id="score">
+    Hole: <div id="hole">1</div>
+    Shots: <div id="shots">0</div>
+    Shots Per Hole: <div id="per-hole">0</div>
+</div>
+</body>
+
+<script id="vshader" type="text/glsl">
+attribute vec2 a_position;
+uniform mat3 u_matrix;
+
+void main() {
+    vec2 a_pos = (u_matrix * vec3(a_position, 1)).xy;
+    a_pos = a_pos * 2.0 - 1.0;
+    gl_Position = vec4(a_pos, 0, 1);
+}
+</script>
+
+<script id="fshader" type="text/glsl">
+precision mediump float;
+uniform vec3 u_color;
+
+void main() {
+    gl_FragColor = vec4(u_color, 1.0);
+}
+</script>
+
+<script data-main="scripts/game" src="scripts/require.js"></script>
+</html>
