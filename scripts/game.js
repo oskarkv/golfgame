@@ -157,7 +157,7 @@ require(["ramda", "webgl_helpers", "functional_utils"], function(r, w, fun) {
 
     var linesIntersect = function(l1, l2) {
         var points = [l1[0], l2[0], l1[1], l2[1]];
-        for (var i = 0; i < 4; i ++) {
+        for (var i = 0; i < 4; i++) {
             var p = points[i];
             var v1 = vecSub(points[(i + 1) % 4], p);
             var vo = vecSub(points[(i + 2) % 4], p);
