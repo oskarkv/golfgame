@@ -1,6 +1,7 @@
 A small JavaScript golf game
 ============================
 
+- Load `game.html` to run
 - Use mouse to shoot when the ball is stationary
 - Can not currently be played on touch devices
 - Infinite holes/levels
