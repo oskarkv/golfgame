@@ -346,7 +346,7 @@ require(["ramda", "webgl_helpers", "functional_utils"], function(r, w, fun) {
         document.getElementById("per-hole").innerHTML = shots / (completed + 1);
     };
 
-    var setupGame = function() {
+    var setupHole = function() {
         var land = landscape();
         var pointsNeeded = r.length(r.takeWhile(function (p) {return p[0] < 1;},
                     land)) + 1;
@@ -566,7 +566,7 @@ require(["ramda", "webgl_helpers", "functional_utils"], function(r, w, fun) {
             if (celebrationTime > duration) {
                 celebrating = false;
                 explosions = [];
-                setupGame();
+                setupHole();
                 window.requestAnimationFrame(mainLoop);
             } else {
                 window.requestAnimationFrame(runCelebration);
@@ -654,7 +654,7 @@ require(["ramda", "webgl_helpers", "functional_utils"], function(r, w, fun) {
         makeParticleTexture(gl);
 
         lastTimestamp = performance.now();
-        setupGame();
+        setupHole();
 
         window.requestAnimationFrame(mainLoop);
     };
