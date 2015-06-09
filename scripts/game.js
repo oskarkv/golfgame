@@ -249,32 +249,31 @@ require(["ramda", "webgl_helpers", "functional_utils"], function(r, w, fun) {
         gl.drawArrays(mode, 0, r.length(vertices) / 2);
     };
 
-    var pointOnCircle = function(angle) {
-        return [Math.cos(angle), Math.sin(angle)];
-    };
-
     var drawBall = function() {
+        var pointOnCircle = function(angle) {
+            return [Math.cos(angle), Math.sin(angle)];
+        };
+
         var ballPoints = r.map(pointOnCircle,
                 r.map(function (factor) {return 2 * Math.PI / ballSectors * factor;},
                     r.range(0, ballSectors)));
 
-        ballPoints = r.map(function(p) {return r.map(r.multiply(ballRadius), p);},
-                ballPoints);
+        ballPoints = r.map(r.partial(scaleVec, ballRadius), ballPoints);
 
         drawGraphics(r.flatten(ballPoints), gl.TRIANGLE_FAN, [1, 1, 1], {
             translation: ballPosition});
     };
 
-    var pointsForDrawing = function(pair) {
-        var p = pair[0];
-        var q = pair[1]
-            var bp = [p[0], 0];
-        var bq = [q[0], 0];
-        return [p, q, bp,
-               bq, bp, q];
-    };
-
     var drawGround = function() {
+        var pointsForDrawing = function(pair) {
+            var p = pair[0];
+            var q = pair[1]
+                var bp = [p[0], 0];
+            var bq = [q[0], 0];
+            return [p, q, bp,
+                   bq, bp, q];
+        };
+
         var pairs = fun.partition(2, 1, currentLandscape);
         var vertices = r.flatten(r.map(pointsForDrawing, pairs));
         drawGraphics(vertices, gl.TRIANGLES, [0, 0.9, 0]);
