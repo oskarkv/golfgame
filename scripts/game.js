@@ -29,8 +29,8 @@ require(["ramda", "webgl_helpers", "functional_utils"], function(r, w, fun) {
     var numTrails = 10;
     var explosionSpeed = 0.1;
     var numExplosions = 5;
-    var velocityThreshold = 0.01;
-    var toGroundThreshold = 0.001;
+    var velocityThreshold = 0.02;
+    var toGroundThreshold = 0.002;
     //These are in milliseconds.
     var explosionLife = 1100;
     var explosionInterval = 200;
