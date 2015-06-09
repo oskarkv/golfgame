@@ -159,12 +159,17 @@ require(["ramda", "webgl_helpers", "functional_utils"], function(r, w, fun) {
         var points = [l1[0], l2[0], l1[1], l2[1]];
         for (var i = 0; i < 4; i++) {
             var p = points[i];
+            //These are the vectors to the 3 other points from p,
+            //vo being to the point on the same line as p.
             var v1 = vecSub(points[(i + 1) % 4], p);
             var vo = vecSub(points[(i + 2) % 4], p);
             var v2 = vecSub(points[(i + 3) % 4], p);
             var angle12 = angleBetween(v1, v2);
             var angleo1 = angleBetween(vo, v1);
             var angleo2 = angleBetween(vo, v2);
+            //The angle between v1 and v2 can not be smaller than the angle
+            //between vo and v1 or vo and v2, because the vector vo (to the
+            //point on the same line as p) has to be in the middle.
             if (angle12 < angleo1 || angle12 < angleo2) {
                 return false;
             }
