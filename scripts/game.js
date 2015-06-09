@@ -120,7 +120,8 @@ require(["ramda", "webgl_helpers", "functional_utils"], function(r, w, fun) {
     };
 
     var magnitude = function(v) {
-        return Math.sqrt(v[0] * v[0] + v[1] * v[1]);
+        var sq = function(x) {return x * x;};
+        return Math.sqrt(r.apply(add, r.map(sq, v)));
     };
 
     var normalize = function(v) {
