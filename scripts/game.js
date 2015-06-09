@@ -605,7 +605,7 @@ require(["ramda", "webgl_helpers", "functional_utils"], function(r, w, fun) {
                 return Math.floor(x * alpha);
             };
             return [255, 100 + timesAlpha(155),
-                timesAlpha(255 * alpha), timesAlpha(255)];
+                   timesAlpha(255 * alpha), timesAlpha(255)];
         };
         for (var x = 0; x < size; x++) {
             for (var y = 0; y < size; y++) {
