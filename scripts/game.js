@@ -70,12 +70,12 @@ require(["ramda", "webgl_helpers", "functional_utils"], function(r, w, fun) {
 
     var matrixMul = function () {
         var mul2 = function(a, b) {
-            b = transpose(b);
+            var tb = transpose(b);
             var result = [];
             for (var i = 0; i < a.length; i++) {
                 var row = a[i];
-                for (var j = 0; j < b.length; j++) {
-                    var col = b[j];
+                for (var j = 0; j < tb.length; j++) {
+                    var col = tb[j];
                     result.push(dot(row, col));
                 }
             }
