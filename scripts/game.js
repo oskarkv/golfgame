@@ -1,7 +1,7 @@
 require(["ramda", "webgl_helpers", "functional_utils"], function(r, w, fun) {
     "use strict";
 
-    //constants
+    //Constants
     var minSegLen = 0.025;
     var maxSegLen = 0.15;
     var minGroundHeight = 0.1;
@@ -24,8 +24,17 @@ require(["ramda", "webgl_helpers", "functional_utils"], function(r, w, fun) {
         [-halfHoleWidth, -holeDepth], [halfHoleWidth, -holeDepth],
         [halfHoleWidth, 0], [holeFlatWidth + halfHoleWidth, 0]];
     var gameSpeed = 0.0022;
+    var particleSize = 8;
+    var numParticles = 150;
+    var numTrails = 10;
+    var explosionSpeed = 0.1;
+    var numExplosions = 5;
+    //These are in milliseconds.
+    var explosionLife = 1100;
+    var explosionInterval = 200;
+    var newHoleDelay = 200; //after explosions
 
-    //state
+    //State
     var program;
     var gl;
     var ballPosition;
@@ -35,11 +44,15 @@ require(["ramda", "webgl_helpers", "functional_utils"], function(r, w, fun) {
     var currentLandscape;
     var ballStill = true;
     var shooting = false;
+    var celebrating = false;
     var aimStartPos;
     var aimEndPos;
     var bottomOfHole;
     var shots = 0;
     var completed = 0;
+    var explosions = [];
+    var trailTimer = 0;
+    var trailTimerLimit = 20;
 
     var translationMat = function (translation) {
         return [[1, 0, translation[0]],
@@ -180,7 +193,7 @@ require(["ramda", "webgl_helpers", "functional_utils"], function(r, w, fun) {
                rand(minGroundHeight, maxGroundHeight)];
     };
 
-    //flatChance === 1 means every second segment becomes flat
+    //flatChance === 1 means every second segment becomes flat.
     var insertFlatSegments = function(flatChance, points) {
         return fun.mapcat(
                 function (p) {
@@ -235,10 +248,16 @@ require(["ramda", "webgl_helpers", "functional_utils"], function(r, w, fun) {
                 translationMat(translation),
                 rotationMat(rotation),
                 scaleMat(scale));
+
         var matrixLoc = gl.getUniformLocation(program, "u_matrix");
         gl.uniformMatrix3fv(matrixLoc, gl.FALSE, toGlslFormat(matrix));
         var colorLoc = gl.getUniformLocation(program, "u_color");
         gl.uniform3fv(colorLoc, color);
+        var particleSizeLoc = gl.getUniformLocation(program, "u_pointSize");
+        gl.uniform1f(particleSizeLoc, particleSize);
+        var useTextureLoc = gl.getUniformLocation(program, "u_useTexture");
+        gl.uniform1i(useTextureLoc, mode === gl.POINTS ? 1 : 0);
+
         var positionLoc = gl.getAttribLocation(program, "a_position");
         var buffer = gl.createBuffer();
         gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
@@ -300,6 +319,14 @@ require(["ramda", "webgl_helpers", "functional_utils"], function(r, w, fun) {
                 transformation);
     };
 
+    var drawExplosion = function(exp) {
+        var pos = function(p) {
+            return p.position;
+        };
+        var transformation = {translation: exp.position};
+        drawGraphics(r.flatten(r.map(pos, exp.particles)), gl.POINTS, [1, 1, 0],
+                transformation);
+    };
 
     var drawScene = function() {
         gl.clearColor(0.5, 0.5, 1.0, 1.0);
@@ -310,6 +337,7 @@ require(["ramda", "webgl_helpers", "functional_utils"], function(r, w, fun) {
             drawAimLine();
         };
         drawBall();
+        explosions.forEach(drawExplosion);
     };
 
     var updateScore = function() {
@@ -364,7 +392,7 @@ require(["ramda", "webgl_helpers", "functional_utils"], function(r, w, fun) {
     };
 
     var beginShooting = function(e) {
-        if (ballStill) {
+        if (ballStill && !celebrating) {
             shooting = true;
             aimStartPos = mouseLocation(e);
         };
@@ -389,25 +417,16 @@ require(["ramda", "webgl_helpers", "functional_utils"], function(r, w, fun) {
         return magnitude(vecSub(ball, hole)) <= halfHoleWidth;
     };
 
-    var logic = function(delta) {
-        if (!ballStill) {
-            bounce(delta);
-        }
-        if (ballStill && inHole(ballPosition, bottomOfHole)) {
-            completed += 1;
-            setupGame();
-            updateScore();
-        }
-    };
-
     var outOfBounds = function(pos) {
         var x = pos[0];
         return x <= 0 || x >= 1;
     };
 
-    var bounce = function(delta) {
-        delta *= gameSpeed;
+    var addDeltaVector = function(delta, addition, to) {
+        return vecAdd(scaleVec(delta, addition), to);
+    };
 
+    var bounce = function(delta) {
         if (outOfBounds(ballPosition)) {
             ballPosition = startingPosition;
             ballVelocity = [0, 0];
@@ -420,11 +439,9 @@ require(["ramda", "webgl_helpers", "functional_utils"], function(r, w, fun) {
                         fun.partition(2, 1, currentLandscape)));
         };
 
-        var addDeltaVector = function(addition, to) {
-            return vecAdd(scaleVec(delta, addition), to);
-        };
+        var addDeltaVectorPrim = r.partial(addDeltaVector, delta);
 
-        ballVelocity = addDeltaVector(gravity, ballVelocity);
+        ballVelocity = addDeltaVectorPrim(gravity, ballVelocity);
 
         var calculateVelocity = function(velocity) {
             var toGround = distanceToGround(ballPosition, currentLandscape);
@@ -433,7 +450,7 @@ require(["ramda", "webgl_helpers", "functional_utils"], function(r, w, fun) {
                 return [0, 0];
             }
 
-            var newPosition = addDeltaVector(velocity, ballPosition);
+            var newPosition = addDeltaVectorPrim(velocity, ballPosition);
 
             var line = findIntersectingSegment([ballPosition, newPosition]);
             if (line) {
@@ -450,12 +467,171 @@ require(["ramda", "webgl_helpers", "functional_utils"], function(r, w, fun) {
         };
 
         ballVelocity = calculateVelocity(ballVelocity);
-        ballPosition = addDeltaVector(ballVelocity, ballPosition);
+        ballPosition = addDeltaVectorPrim(ballVelocity, ballPosition);
+    };
+
+    var createParticle = function() {
+        var rand1 = r.partial(rand, -1, 1);
+        return {position: scaleVec(0.01, [rand1(), rand1()]),
+            //Normalize a 3D vector to make the explosion look 3D
+            velocity: fun.butlast(normalize([rand1(), rand1(), rand1()]))};
+    };
+
+    var createExplosion = function(pos) {
+        return {position: pos,
+            particles: fun.repeatedly(numParticles, createParticle),
+            explosionTime: 0,
+            timeToLive: explosionLife};
+    };
+
+    var updateParticle = function(delta, explosionTime, p) {
+        //The speed of particles should decrease with time after explosion.
+        var speed = explosionSpeed / (Math.pow(explosionTime / 500 , 2) + 1);
+        //Multiply by game speed to make gravity and velocity calculations
+        //similar to the ball's.
+        delta *= gameSpeed;
+        //Divide gravity increase by speed to counteract
+        //the slowing down of gravity.
+        //Repetition (verbosity) below is an optimization.
+        p.velocity[1] += delta / speed * gravity[1] / 10;
+        p.position[0] += delta * speed * p.velocity[0];
+        p.position[1] += delta * speed * p.velocity[1];
+        return p;
+    };
+
+    var spawnTrails = function(particles) {
+        var copy = function(p) {
+            return {position: r.map(r.identity, p.position),
+                velocity: [0, 0]};
+        };
+
+        particles = fun.concat(particles,
+                r.map(copy, r.slice(0, numParticles, particles)));
+
+        if (particles.length > numParticles * numTrails) {
+            particles = fun.concat(
+                    r.slice(0, numParticles, particles),
+                    r.slice(2 * numParticles, (2 + numTrails) * numParticles, particles));
+        };
+        return particles;
+    };
+
+    var updateExplosion = function(delta, exp) {
+        //Explosions are completely removed after the celebration.
+        if (exp.timeToLive <= 0) {
+            exp.particles = [];
+            return exp;
+        };
+        exp.timeToLive -= delta;
+        exp.explosionTime += delta;
+        if (trailTimer > trailTimerLimit) {
+            exp.particles = spawnTrails(exp.particles);
+        };
+        exp.particles = r.map(
+                r.partial(updateParticle, delta, exp.explosionTime),
+                exp.particles);
+        return exp;
+    };
+
+    var celebrate = function() {
+        celebrating = true;
+        var duration = (numExplosions - 1) * explosionInterval +
+            explosionLife + newHoleDelay;
+        var celebrationTime = 0;
+        var lastUpdate = performance.now();
+        var spawnedExplosions = 0;
+
+        var runCelebration = function(now) {
+            var delta = now - lastUpdate;
+            lastUpdate = now;
+
+            celebrationTime += delta;
+            if (celebrationTime > explosionInterval * spawnedExplosions) {
+                var pos = [0.7 + rand(-0.2, 0.2),
+                    0.8 + rand(-0.1, 0.1)];
+                if (spawnedExplosions < numExplosions) {
+                    explosions.push(createExplosion(pos));
+                    spawnedExplosions += 1;
+                }
+            };
+
+            trailTimer += delta;
+            explosions.forEach(r.partial(updateExplosion, delta));
+            if (trailTimer > trailTimerLimit) {
+                trailTimer -= trailTimerLimit;
+            }
+
+            drawScene();
+
+            if (celebrationTime > duration) {
+                celebrating = false;
+                explosions = [];
+                setupGame();
+                window.requestAnimationFrame(mainLoop);
+            } else {
+                window.requestAnimationFrame(runCelebration);
+            }
+        };
+
+        window.requestAnimationFrame(runCelebration);
+    };
+
+    var logic = function(delta) {
+        delta *= gameSpeed;
+
+        if (!ballStill) {
+            bounce(delta);
+        }
+        if (ballStill && inHole(ballPosition, bottomOfHole)) {
+            completed += 1;
+            celebrate();
+            updateScore();
+        }
+    };
+
+    var gaussian = function(x) {
+        var c = 0.3;
+        return Math.exp(-x * x / (2 * c * c));
+    };
+
+    var gaussianTexture = function(size) {
+        var result = [];
+        var mid = size/2 - 0.5;
+        mid = [mid, mid];
+        var distToEdge = magnitude(mid);
+        var color = function(alpha) {
+            alpha *= 0.1;
+            var timesAlpha = function (x) {
+                return Math.floor(x * alpha);
+            };
+            return [255, 100 + timesAlpha(155),
+                timesAlpha(255 * alpha), timesAlpha(255)];
+        };
+        for (var x = 0; x < size; x++) {
+            for (var y = 0; y < size; y++) {
+                result.push(color(gaussian(
+                                magnitude(vecSub([x, y], mid)) / distToEdge)));
+            }
+        }
+        return result;
+    };
+
+    var makeParticleTexture = function(gl) {
+        var texture = gl.createTexture();
+        gl.bindTexture(gl.TEXTURE_2D, texture);
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, particleSize, particleSize, 0,
+                gl.RGBA, gl.UNSIGNED_BYTE,
+                new Uint8Array(r.flatten(gaussianTexture(particleSize))));
+        gl.generateMipmap(gl.TEXTURE_2D);
     };
 
     var mainLoop = function(now) {
         var delta = now - lastTimestamp;
         lastTimestamp = now;
+
+        if (celebrating) {
+            return;
+        }
 
         logic(delta);
         drawScene();
@@ -471,6 +647,11 @@ require(["ramda", "webgl_helpers", "functional_utils"], function(r, w, fun) {
         gl = canvas.getContext("webgl");
         program = w.programFromScripts(gl, "vshader", "fshader");
         gl.useProgram(program);
+        gl.enable(gl.BLEND);
+        gl.blendEquation(gl.FUNC_ADD);
+        gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+
+        makeParticleTexture(gl);
 
         lastTimestamp = performance.now();
         setupGame();

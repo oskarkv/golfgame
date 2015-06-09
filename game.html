@@ -19,20 +19,27 @@
 <script id="vshader" type="text/glsl">
 attribute vec2 a_position;
 uniform mat3 u_matrix;
+uniform float u_pointSize;
 
 void main() {
     vec2 a_pos = (u_matrix * vec3(a_position, 1)).xy;
     a_pos = a_pos * 2.0 - 1.0;
     gl_Position = vec4(a_pos, 0, 1);
+    gl_PointSize = u_pointSize;
 }
 </script>
 
 <script id="fshader" type="text/glsl">
 precision mediump float;
 uniform vec3 u_color;
+uniform sampler2D u_texture;
+uniform bool u_useTexture;
 
 void main() {
-    gl_FragColor = vec4(u_color, 1.0);
+    if (u_useTexture)
+        gl_FragColor = texture2D(u_texture, gl_PointCoord);
+    else
+        gl_FragColor = vec4(u_color, 1.0);
 }
 </script>
 
