@@ -5,4 +5,5 @@ A small JavaScript golf game
 - Can not currently be played on touch devices
 - Infinite holes/levels
 
-Uses [Ramda](http://ramdajs.com/0.14/index.html) and [RequireJS](http://requirejs.org/) (included).
+Uses [Ramda](http://ramdajs.com/0.14/index.html) and
+[RequireJS](http://requirejs.org/) (included).
