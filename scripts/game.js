@@ -647,7 +647,6 @@ require(["ramda", "webgl_helpers", "functional_utils"], function(r, w, fun) {
     };
 
     var main = function() {
-        var canvas = document.getElementById("canvas");
         canvas.onmousemove = aim;
         canvas.onmousedown = beginShooting;
         canvas.onmouseup = shoot;
